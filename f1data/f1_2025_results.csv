@@ -2,6 +2,66 @@ race_name,date,position,driver_name,team_name,fastest_lap
 Australian Grand Prix,2025-03-16,1,Lando Norris,McLaren,1:22.167
 Australian Grand Prix,2025-03-16,2,Max Verstappen,Red Bull Racing,
 Australian Grand Prix,2025-03-16,3,George Russell,Mercedes,
-Chinese Grand Prix,2025-03-23,1,Oscar Piastri,McLaren,
-Chinese Grand Prix,2025-03-23,2,Lando Norris,McLaren,1:23.081
+Chinese Grand Prix,2025-03-23,1,Oscar Piastri,McLaren,1:35.454
+Chinese Grand Prix,2025-03-23,2,Lando Norris,McLaren,
 Chinese Grand Prix,2025-03-23,3,George Russell,Mercedes,
+Japanese Grand Prix,2025-04-06,1,Max Verstappen,Red Bull Racing,1:30.965
+Japanese Grand Prix,2025-04-06,2,Oscar Piastri,McLaren,
+Japanese Grand Prix,2025-04-06,3,Charles Leclerc,Ferrari,
+Bahrain Grand Prix,2025-04-13,1,Oscar Piastri,McLaren,1:35.140
+Bahrain Grand Prix,2025-04-13,2,Max Verstappen,Red Bull Racing,
+Bahrain Grand Prix,2025-04-13,3,Lando Norris,McLaren,
+Saudi Arabian Grand Prix,2025-04-20,1,Oscar Piastri,McLaren,1:31.778
+Saudi Arabian Grand Prix,2025-04-20,2,Max Verstappen,Red Bull Racing,
+Saudi Arabian Grand Prix,2025-04-20,3,George Russell,Mercedes,
+Miami Grand Prix,2025-05-04,1,Oscar Piastri,McLaren,1:29.746
+Miami Grand Prix,2025-05-04,2,Lando Norris,McLaren,
+Miami Grand Prix,2025-05-04,3,George Russell,Mercedes,
+Emilia-Romagna Grand Prix,2025-05-18,1,Max Verstappen,Red Bull Racing,1:17.988
+Emilia-Romagna Grand Prix,2025-05-18,2,Lando Norris,McLaren,
+Emilia-Romagna Grand Prix,2025-05-18,3,Oscar Piastri,McLaren,
+Monaco Grand Prix,2025-05-25,1,Lando Norris,McLaren,1:13.221
+Monaco Grand Prix,2025-05-25,2,Oscar Piastri,McLaren,
+Monaco Grand Prix,2025-05-25,3,Max Verstappen,Red Bull Racing,
+Spanish Grand Prix,2025-06-01,1,Oscar Piastri,McLaren,1:15.743
+Spanish Grand Prix,2025-06-01,2,Lando Norris,McLaren,
+Spanish Grand Prix,2025-06-01,3,Charles Leclerc,Ferrari,
+Canadian Grand Prix,2025-06-15,1,George Russell,Mercedes,1:14.119
+Canadian Grand Prix,2025-06-15,2,Max Verstappen,Red Bull Racing,
+Canadian Grand Prix,2025-06-15,3,Lando Norris,McLaren,
+Austrian Grand Prix,2025-06-29,1,Lando Norris,McLaren,1:07.924
+Austrian Grand Prix,2025-06-29,2,Oscar Piastri,McLaren,
+Austrian Grand Prix,2025-06-29,3,Charles Leclerc,Ferrari,
+British Grand Prix,2025-07-06,1,Lando Norris,McLaren,1:29.337
+British Grand Prix,2025-07-06,2,Oscar Piastri,McLaren,
+British Grand Prix,2025-07-06,3,Nico Hulkenberg,Sauber,
+Belgian Grand Prix,2025-07-27,1,Oscar Piastri,McLaren,1:44.861
+Belgian Grand Prix,2025-07-27,2,Lando Norris,McLaren,
+Belgian Grand Prix,2025-07-27,3,Charles Leclerc,Ferrari,
+Hungarian Grand Prix,2025-08-03,1,Lando Norris,McLaren,1:19.409
+Hungarian Grand Prix,2025-08-03,2,Oscar Piastri,McLaren,
+Hungarian Grand Prix,2025-08-03,3,George Russell,Mercedes,
+Dutch Grand Prix,2025-08-31,1,Oscar Piastri,McLaren,1:12.271
+Dutch Grand Prix,2025-08-31,2,Max Verstappen,Red Bull Racing,
+Dutch Grand Prix,2025-08-31,3,Isack Hadjar,Racing Bulls,
+Italian Grand Prix,2025-09-07,1,Max Verstappen,Red Bull Racing,1:20.901
+Italian Grand Prix,2025-09-07,2,Lando Norris,McLaren,
+Italian Grand Prix,2025-09-07,3,Oscar Piastri,McLaren,
+Azerbaijan Grand Prix,2025-09-21,1,Max Verstappen,Red Bull Racing,1:43.388
+Azerbaijan Grand Prix,2025-09-21,2,George Russell,Mercedes,
+Azerbaijan Grand Prix,2025-09-21,3,Carlos Sainz,Williams,
+Singapore Grand Prix,2025-10-05,1,George Russell,Mercedes,1:33.808
+Singapore Grand Prix,2025-10-05,2,Max Verstappen,Red Bull Racing,
+Singapore Grand Prix,2025-10-05,3,Lando Norris,McLaren,
+United States Grand Prix,2025-10-19,1,Max Verstappen,Red Bull Racing,1:37.577
+United States Grand Prix,2025-10-19,2,Lando Norris,McLaren,
+United States Grand Prix,2025-10-19,3,Charles Leclerc,Ferrari,
+Mexico City Grand Prix,2025-10-26,1,Lando Norris,McLaren,1:20.052
+Mexico City Grand Prix,2025-10-26,2,Charles Leclerc,Ferrari,
+Mexico City Grand Prix,2025-10-26,3,Max Verstappen,Red Bull Racing,
+São Paulo Grand Prix,2025-11-09,1,Lando Norris,McLaren,1:12.400
+São Paulo Grand Prix,2025-11-09,2,Alex Albon,Williams,
+São Paulo Grand Prix,2025-11-09,3,Max Verstappen,Red Bull Racing,
+Las Vegas Grand Prix,2025-11-22,1,Max Verstappen,Red Bull Racing,
+Las Vegas Grand Prix,2025-11-22,2,George Russell,Mercedes,
+Las Vegas Grand Prix,2025-11-22,3,Kimi Antonelli,Mercedes,
