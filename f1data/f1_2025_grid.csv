@@ -1,0 +1,21 @@
+driverId,constructorId,driver_name,team_name,nationality,constructor_nationality
+900,100,Max Verstappen,Red Bull Racing,Dutch,Austrian
+901,100,Yuki Tsunoda,Red Bull Racing,Japanese,Austrian
+902,101,Charles Leclerc,Ferrari,Monegasque,Italian
+903,101,Lewis Hamilton,Ferrari,British,Italian
+904,102,George Russell,Mercedes,British,German
+905,102,Andrea Kimi Antonelli,Mercedes,Italian,German
+906,103,Lando Norris,McLaren,British,British
+907,103,Oscar Piastri,McLaren,Australian,British
+908,104,Fernando Alonso,Aston Martin,Spanish,British
+909,104,Lance Stroll,Aston Martin,Canadian,British
+910,105,Pierre Gasly,Alpine,French,French
+911,105,Jack Doohan,Alpine,Australian,French
+912,106,Alexander Albon,Williams,Thai,British
+913,106,Carlos Sainz,Williams,Spanish,British
+914,107,Esteban Ocon,Haas F1 Team,French,American
+915,107,Oliver Bearman,Haas F1 Team,British,American
+916,108,Nico Hulkenberg,Kick Sauber,German,Swiss
+917,108,Gabriel Bortoleto,Kick Sauber,Brazilian,Swiss
+918,109,Liam Lawson,RB,New Zealander,Austrian
+919,109,Isack Hadjar,RB,French,Austrian
