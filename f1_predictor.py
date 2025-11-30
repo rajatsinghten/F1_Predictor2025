@@ -1,8 +1,9 @@
 import re
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score
+from sklearn.utils.class_weight import compute_sample_weight
 import joblib
 from datetime import datetime, timedelta
 import pytz
@@ -11,6 +12,19 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from data_loader import F1DataLoaderFixed as F1DataLoader
+
+# Try to import optional imbalance-handling libraries
+try:
+    from imblearn.over_sampling import SMOTE
+    HAS_IMBLEARN = True
+except ImportError:
+    HAS_IMBLEARN = False
+
+try:
+    import xgboost as xgb
+    HAS_XGBOOST = True
+except (ImportError, Exception):
+    HAS_XGBOOST = False
 
 F1_CALENDAR_2025 = [
     "Australian Grand Prix - Melbourne (16 Mar)",
@@ -76,15 +90,54 @@ def parse_calendar_entry(entry: str, year=2025):
     return name, date_obj, explicitly_completed
 
 class F1Predictor:
-    def __init__(self, data_path='f1data'):
+    def __init__(self, data_path='f1data', model_type='gradient_boosting'):
         self.data_path = data_path
+        self.model_type = model_type  # 'random_forest', 'gradient_boosting', or 'xgboost'
         self.model = None
-        # use the fixed loader
+        self.threshold = 0.5  # Will be optimized during training
+        
+        # Initialize model based on type
+        if model_type == 'gradient_boosting':
+            self.model = GradientBoostingClassifier(
+                n_estimators=150,
+                max_depth=4,
+                learning_rate=0.1,
+                subsample=0.8,
+                min_samples_split=20,
+                min_samples_leaf=8,
+                random_state=42
+            )
+        elif model_type == 'xgboost' and HAS_XGBOOST:
+            self.model = xgb.XGBClassifier(
+                n_estimators=150,
+                max_depth=4,
+                learning_rate=0.1,
+                subsample=0.8,
+                min_child_weight=10,
+                scale_pos_weight=19,  # Approximate class weight (non-winners : winners)
+                random_state=42,
+                tree_method='hist',
+                eval_metric='logloss'
+            )
+        else:
+            # Default to Random Forest with class weights
+            self.model = RandomForestClassifier(
+                n_estimators=200,
+                max_depth=6,
+                min_samples_split=15,
+                min_samples_leaf=5,
+                class_weight='balanced',
+                max_features='sqrt',
+                random_state=42,
+                n_jobs=-1
+            )
+        
         self.data_loader = F1DataLoader(data_path)
         self.feature_importance = None
         self.grid_2025 = None
         self.results_2025 = None
         self.feature_columns = None
+        self.scaler_stats = None  # Store for threshold optimization
         self.load_2025_data()
         try:
             self.load_model()
@@ -424,37 +477,63 @@ class F1Predictor:
 
         return final_standings, constructor_standings, race_results
 
-    def train_model(self):
+    def train_model(self, use_smote=False, optimize_threshold=True):
+        """
+        Improved training with class imbalance handling and threshold optimization.
+        
+        Args:
+            use_smote: Whether to apply SMOTE oversampling (requires imbalanced-learn)
+            optimize_threshold: Whether to optimize decision threshold on validation set
+        """
         results = self.data_loader.prepare_features()
         if len(results) < 8:
             raise RuntimeError("Unexpected return from data_loader.prepare_features()")
         X_train, y_train, X_val, y_val, X_test, y_test, preprocessor, feature_columns = results
         self.feature_columns = feature_columns
-        self.model = RandomForestClassifier(
-            n_estimators=100,
-            max_depth=10,
-            min_samples_split=5,
-            min_samples_leaf=2,
-            random_state=42,
-            n_jobs=-1
-        )
+        
+        # Apply SMOTE if requested and available
+        if use_smote and HAS_IMBLEARN and y_train.sum() > 1:
+            try:
+                smote = SMOTE(random_state=42, k_neighbors=5)
+                X_train_balanced, y_train_balanced = smote.fit_resample(X_train, y_train)
+                print(f"SMOTE applied: {len(y_train)} -> {len(y_train_balanced)} samples")
+                X_train, y_train = X_train_balanced, y_train_balanced
+            except Exception as e:
+                print(f"SMOTE failed: {e}. Continuing without SMOTE.")
+        
+        # Train the model
         self.model.fit(X_train, y_train)
-
+        
         self.feature_importance = pd.DataFrame({
             'feature': X_train.columns,
             'importance': self.model.feature_importances_
         }).sort_values('importance', ascending=False)
 
-        def safe_predict(model, X):
+        def safe_predict(model, X, threshold=None):
             if X is None or X.shape[0] == 0:
-                return np.array([]), np.array([])
-            preds = model.predict(X)
+                return np.array([]), np.array([]), np.array([])
             probs = model.predict_proba(X)[:, 1]
-            return preds, probs
+            if threshold is None:
+                threshold = 0.5
+            preds = (probs >= threshold).astype(int)
+            return preds, probs, np.array(probs)
 
-        train_pred, train_proba = safe_predict(self.model, X_train)
-        val_pred, val_proba = safe_predict(self.model, X_val)
-        test_pred, test_proba = safe_predict(self.model, X_test)
+        # Get predictions with default threshold
+        train_pred, train_proba, _ = safe_predict(self.model, X_train)
+        val_pred, val_proba, _ = safe_predict(self.model, X_val)
+        test_pred, test_proba, _ = safe_predict(self.model, X_test)
+        
+        # Optimize threshold on validation set if requested
+        optimal_threshold = 0.5
+        if optimize_threshold and y_val.sum() > 0:
+            optimal_threshold = self._find_optimal_threshold(y_val, val_proba)
+            print(f"Optimized threshold: {optimal_threshold:.3f}")
+            # Re-predict with optimal threshold
+            train_pred, _, _ = safe_predict(self.model, X_train, optimal_threshold)
+            val_pred, _, _ = safe_predict(self.model, X_val, optimal_threshold)
+            test_pred, _, _ = safe_predict(self.model, X_test, optimal_threshold)
+        
+        self.threshold = optimal_threshold
 
         metrics = {}
         if train_pred.size:
@@ -486,12 +565,46 @@ class F1Predictor:
             metrics['Test F1 Score'] = np.nan
 
         return metrics
+    
+    def _find_optimal_threshold(self, y_true, y_proba, metric='f1'):
+        """
+        Find optimal classification threshold by maximizing specified metric on validation data.
+        Metrics: 'f1', 'precision', 'recall', 'balanced_accuracy'
+        """
+        best_threshold = 0.5
+        best_score = -1
+        
+        for threshold in np.arange(0.1, 0.91, 0.05):
+            y_pred = (y_proba >= threshold).astype(int)
+            
+            if metric == 'f1':
+                try:
+                    precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_pred, average='binary')
+                    score = f1
+                except:
+                    continue
+            elif metric == 'recall':
+                try:
+                    _, recall, _, _ = precision_recall_fscore_support(y_true, y_pred, average='binary')
+                    score = recall
+                except:
+                    continue
+            else:
+                score = accuracy_score(y_true, y_pred)
+            
+            if score > best_score:
+                best_score = score
+                best_threshold = threshold
+        
+        return best_threshold
 
     def save_model(self, filename='f1_model.joblib'):
         if self.model is None:
             raise RuntimeError("No trained model to save.")
         model_data = {
             'model': self.model,
+            'model_type': self.model_type,
+            'threshold': self.threshold,
             'feature_importance': self.feature_importance,
             'preprocessor': self.data_loader.preprocessor,
             'feature_columns': self.data_loader.feature_columns
@@ -502,6 +615,8 @@ class F1Predictor:
     def load_model(self, filename='f1_model.joblib'):
         model_data = joblib.load(filename)
         self.model = model_data.get('model')
+        self.model_type = model_data.get('model_type', 'random_forest')
+        self.threshold = model_data.get('threshold', 0.5)
         self.feature_importance = model_data.get('feature_importance')
         preprocessor = model_data.get('preprocessor')
         feature_columns = model_data.get('feature_columns')
@@ -512,3 +627,157 @@ class F1Predictor:
             self.feature_columns = feature_columns
         return f"Model loaded from {filename}"
 
+def main():
+    st.set_page_config(page_title="F1 2025 AI Predictor", layout="wide", page_icon="🏎️")
+    
+    st.title("🏎️ F1 2025 Season AI Predictor")
+    
+    # Initialize the predictor (Cached to prevent reloading on every interaction)
+    @st.cache_resource
+    def get_predictor():
+        return F1Predictor()
+    
+    try:
+        predictor = get_predictor()
+    except Exception as e:
+        st.error(f"Failed to initialize predictor. Please check data files. Error: {e}")
+        return
+
+    # Sidebar for Navigation
+    st.sidebar.header("Navigation")
+    page = st.sidebar.radio("Go to:", ["Race Predictor", "Championship Simulation", "Model Management", "Calendar"])
+
+    # -------------------------------------------------------------------------
+    # PAGE 1: RACE PREDICTOR
+    # -------------------------------------------------------------------------
+    if page == "Race Predictor":
+        st.header("🔮 Race Prediction")
+        
+        # Parse calendar to get race names for the dropdown
+        calendar_parsed = predictor._calendar_parsed()
+        race_options = [item[0] for item in calendar_parsed]
+        
+        # Try to find the next upcoming race to set as default
+        default_index = 0
+        remaining_races = predictor._remaining_races_from_calendar_and_results()
+        if remaining_races:
+            try:
+                # Find index of first remaining race in the full list
+                default_index = race_options.index(remaining_races[0])
+            except ValueError:
+                default_index = 0
+
+        selected_race = st.selectbox("Select Grand Prix", race_options, index=default_index)
+
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.info(f"Predicting results for: **{selected_race}**")
+            if st.button("Generate Prediction", type="primary"):
+                with st.spinner("Analyzing driver stats and grid data..."):
+                    results = predictor.predict_2025_race(selected_race)
+                
+                if results is not None:
+                    # Formatting for display
+                    display_df = results[['Driver', 'Team', 'Win Probability']].copy()
+                    display_df['Win Probability'] = display_df['Win Probability'].map('{:.1%}'.format)
+                    st.dataframe(display_df, hide_index=True)
+                else:
+                    st.error("Prediction failed. Ensure model is trained and grid data is available.")
+
+        with col2:
+            if 'results' in locals() and results is not None:
+                # Plotly Chart
+                fig = px.bar(
+                    results.head(10), 
+                    x='Win Probability', 
+                    y='Driver', 
+                    orientation='h',
+                    color='Win Probability',
+                    title=f"Win Probability - Top 10: {selected_race}",
+                    color_continuous_scale='Viridis'
+                )
+                fig.update_layout(yaxis=dict(autorange="reversed"))
+                st.plotly_chart(fig, use_container_width=True)
+
+    # -------------------------------------------------------------------------
+    # PAGE 2: CHAMPIONSHIP SIMULATION
+    # -------------------------------------------------------------------------
+    elif page == "Championship Simulation":
+        st.header("🏆 Season Simulation")
+        st.markdown("Simulate the remainder of the season based on current standings and AI predictions.")
+        
+        if st.button("Simulate Remaining Season"):
+            with st.spinner("Simulating every lap of the remaining races..."):
+                final_drivers, final_constructors, race_logs = predictor.simulate_championship()
+            
+            if final_drivers is not None:
+                c1, c2 = st.columns(2)
+                
+                with c1:
+                    st.subheader("Driver Standings")
+                    st.dataframe(final_drivers, hide_index=True, use_container_width=True)
+                    
+                    # Winner Highlight
+                    winner = final_drivers.iloc[0]
+                    st.success(f"🏆 Predicted Champion: **{winner['Driver']}** ({winner['Points']} pts)")
+
+                with c2:
+                    st.subheader("Constructor Standings")
+                    st.dataframe(final_constructors, hide_index=True, use_container_width=True)
+                
+                # Visualization of points
+                fig = px.bar(final_drivers.head(10), x='Driver', y='Points', color='Team', title="Projected Final Points")
+                st.plotly_chart(fig, use_container_width=True)
+                
+                with st.expander("View Race-by-Race Simulation Logs"):
+                    st.write(race_logs)
+            else:
+                st.error("Simulation failed. Check data availability.")
+
+    # -------------------------------------------------------------------------
+    # PAGE 3: MODEL MANAGEMENT
+    # -------------------------------------------------------------------------
+    elif page == "Model Management":
+        st.header("⚙️ Model Training & Status")
+        
+        st.write(f"**Model Loaded:** {'Yes' if predictor.model else 'No'}")
+        
+        if st.button("Train New Model"):
+            with st.spinner("Training Random Forest Classifier..."):
+                try:
+                    metrics = predictor.train_model()
+                    st.success("Training Complete!")
+                    st.json(metrics)
+                    predictor.save_model()
+                    st.write("Model saved to disk.")
+                except Exception as e:
+                    st.error(f"Training failed: {e}")
+        
+        if predictor.feature_importance is not None:
+            st.subheader("Feature Importance")
+            fig = px.bar(
+                predictor.feature_importance.head(15),
+                x='importance',
+                y='feature',
+                orientation='h',
+                title="Top Predictive Features"
+            )
+            fig.update_layout(yaxis=dict(autorange="reversed"))
+            st.plotly_chart(fig)
+
+    # -------------------------------------------------------------------------
+    # PAGE 4: CALENDAR
+    # -------------------------------------------------------------------------
+    elif page == "Calendar":
+        st.header("📅 2025 Race Calendar")
+        calendar_data = []
+        for entry in F1_CALENDAR_2025:
+            name, date_obj, completed = parse_calendar_entry(entry)
+            status = "✅ Completed" if completed else ("📅 Upcoming" if date_obj and date_obj >= datetime.now().date() else "⏭️ Next")
+            calendar_data.append({"Race": name, "Date": date_obj, "Status": status})
+        
+        st.dataframe(pd.DataFrame(calendar_data), use_container_width=True)
+
+if __name__ == "__main__":
+    main()

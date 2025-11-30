@@ -97,7 +97,6 @@ class F1DataLoaderFixed:
         df['points_moving_avg'] = df.groupby('driverId')['points'].transform(
             lambda x: x.rolling(window=3, min_periods=1).mean().shift(1)
         )
-
         # 2) Qualifying performance: compute rolling mean of qualifying *past* positions
         qual = pd.merge(
             self.data['qualifying'],
@@ -125,6 +124,24 @@ class F1DataLoaderFixed:
         df['circuit_wins'] = df.sort_values('raceId').groupby(['driverId', 'circuitId'])['position'].transform(
             lambda x: (x == 1).cumsum().shift(1).fillna(0)
         )
+        
+        # 3b) Win rate (recent wins) - rolling proportion of wins in last 5 races
+        df['win_rate_5'] = df.sort_values('raceId').groupby('driverId')['position'].transform(
+            lambda x: (x == 1).rolling(window=5, min_periods=1).mean().shift(1)
+        )
+        
+        # 3c) Podium finishes (top 3) in last 5 races
+        df['podium_rate_5'] = df.sort_values('raceId').groupby('driverId')['position'].transform(
+            lambda x: (x <= 3).rolling(window=5, min_periods=1).mean().shift(1)
+        )
+        
+        # 3d) Average finishing position in last 5 races
+        df['avg_position_5'] = df.sort_values('raceId').groupby('driverId')['position'].transform(
+            lambda x: x.rolling(window=5, min_periods=1).mean().shift(1)
+        )
+        
+        # 3e) Grid to position gap (negative means moved up, positive means moved down)
+        df['grid_to_position_gap'] = df['grid'] - df['position']
 
         # 4) Championship points/position from driver_standings:
         #    shift by 1 so standings reflect state BEFORE the current race (no leakage)
@@ -154,6 +171,11 @@ class F1DataLoaderFixed:
         df['constructor_position_mean'] = df.groupby('constructorId')['position'].transform(
             lambda x: x.expanding().mean().shift(1)
         )
+        
+        # 5b) Constructor win count
+        df['constructor_wins'] = df.sort_values('raceId').groupby('constructorId')['position'].transform(
+            lambda x: (x == 1).cumsum().shift(1).fillna(0)
+        )
 
         # Replace NaNs in constructor std with 0 (std undefined for single obs)
         df['constructor_points_std'] = df['constructor_points_std'].fillna(0)
@@ -165,9 +187,11 @@ class F1DataLoaderFixed:
         df['constructor_position_mean'] = df['constructor_position_mean'].fillna(df['position'].max() if 'position' in df.columns else 999)
 
         # final safety numeric coercions
-        for col in ['points_moving_avg', 'qual_position_avg', 'circuit_wins',
+        for col in ['points_moving_avg', 'qual_position_avg', 'circuit_wins', 'win_rate_5', 
+                    'podium_rate_5', 'avg_position_5', 'grid_to_position_gap',
                     'points_championship', 'position_championship',
-                    'constructor_points_mean', 'constructor_points_std', 'constructor_position_mean']:
+                    'constructor_points_mean', 'constructor_points_std', 'constructor_position_mean',
+                    'constructor_wins']:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
 
@@ -231,11 +255,16 @@ class F1DataLoaderFixed:
             'qual_position_avg',
             'points_moving_avg',
             'circuit_wins',
+            'win_rate_5',
+            'podium_rate_5',
+            'avg_position_5',
+            'grid_to_position_gap',
             'points_championship',
             'position_championship',
             'constructor_points_mean',
             'constructor_points_std',
             'constructor_position_mean',
+            'constructor_wins',
             'nationality',
             'nationality_constructor',
             'country'
