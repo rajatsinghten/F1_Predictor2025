@@ -237,10 +237,15 @@ class F1DataLoaderFixed:
         out_cols = num_cols + cat_cols
         return pd.DataFrame(arr, columns=out_cols, index=X.index)
 
-    def prepare_features(self):
+    def prepare_features(self, train_years=(1950, 2022), val_years=(2023, 2023), test_years=(2024, 2024)):
         """
         Main entry point: loads data, creates features, splits by year, fits preprocessing
         and returns (X_train, y_train, X_val, y_val, X_test, y_test, preprocessor, feature_columns)
+        
+        Args:
+            train_years: tuple (min_year, max_year) for training set
+            val_years: tuple (min_year, max_year) for validation set
+            test_years: tuple (min_year, max_year) for test set
         """
         self.load_all_data()
         df = self.prepare_race_data()
@@ -284,17 +289,17 @@ class F1DataLoaderFixed:
         # Split by year — keep this logic but check existence of 'year'
         if 'year' not in df.columns:
             raise ValueError("Column 'year' required for temporal split but not present in data.")
-        train_df = df[df['year'] <= 2022].copy()
-        val_df = df[df['year'] == 2023].copy()
-        test_df = df[df['year'] == 2024].copy()
+        train_df = df[(df['year'] >= train_years[0]) & (df['year'] <= train_years[1])].copy()
+        val_df = df[(df['year'] >= val_years[0]) & (df['year'] <= val_years[1])].copy()
+        test_df = df[(df['year'] >= test_years[0]) & (df['year'] <= test_years[1])].copy()
 
         # If any of the splits are empty, still proceed but warn
         if train_df.empty:
-            print("Warning: Training split is empty (no rows with year <= 2022).")
+            print(f"Warning: Training split is empty (no rows with {train_years[0]} <= year <= {train_years[1]}).")
         if val_df.empty:
-            print("Warning: Validation split is empty (no rows with year == 2023).")
+            print(f"Warning: Validation split is empty (no rows with {val_years[0]} <= year <= {val_years[1]}).")
         if test_df.empty:
-            print("Warning: Test split is empty (no rows with year == 2024).")
+            print(f"Warning: Test split is empty (no rows with {test_years[0]} <= year <= {test_years[1]}).")
 
         # Prepare X and y for each split (select only available features)
         X_train = train_df[self.feature_columns].copy()

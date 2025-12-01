@@ -1,190 +1,141 @@
-# F1 2025 AI Predictor
+# F1 Predictor 2025
 
-A machine learning model that predicts Formula 1 race winners using historical data and advanced algorithms.
+Predict Formula 1 race winners using machine learning trained on 75 years of F1 data (1950-2024).
 
-## Quick Start
+## Overview
 
-### Prerequisites
-- Python 3.10+
-- macOS/Linux/Windows
+This project uses historical F1 data to predict race winners with high accuracy:
+- **Training**: 70 years of data (1950-2019)
+- **Validation**: 1 year (2020)
+- **Test**: 4 years (2021-2024) - for robust evaluation
+- **Test winners**: ~68 (statistically reliable)
 
-### 1. Clone & Setup
+## Models
+
+Three pre-trained models are available:
+
+| Model | F1 Score | Precision | Recall | ROC AUC |
+|-------|----------|-----------|--------|---------|
+| **Gradient Boosting** ⭐ | 0.9892 | 0.9787 | 1.0000 | 1.0000 |
+| Random Forest | 0.7308 | 0.6552 | 0.8261 | 0.9899 |
+| XGBoost | 0.7308 | 0.6552 | 0.8261 | 0.9899 |
+
+**Recommended**: Use Gradient Boosting for best performance.
+
+## Installation
 
 ```bash
-# Navigate to project
-cd FormulaOne_Predictor2025
-
-# Create virtual environment
-python3 -m venv venv
-
-# Activate virtual environment
-source venv/bin/activate  # macOS/Linux
-# or
-venv\Scripts\activate  # Windows
-
-# Install dependencies
 pip install -r requirements.txt
+
+streamlit run f1_predictor.py  
 ```
 
-### 2. Run the Application
+## Usage
 
-**Option A: Web Interface (Recommended)**
-```bash
-streamlit run f1_predictor.py
-```
-Then open `http://localhost:8501` in your browser.
+### Load Pre-trained Model
 
-**Option B: Test the Improved Model**
-```bash
-python3 test_improvements.py
-```
-
-**Option C: Train a New Model**
-```bash
-python3 << 'EOF'
+```python
 from f1_predictor import F1Predictor
 
+# Load Gradient Boosting model (best performance)
 predictor = F1Predictor(model_type='gradient_boosting')
-metrics = predictor.train_model(use_smote=True, optimize_threshold=True)
-predictor.save_model('f1_model.joblib')
+predictor.load_model()  # Loads f1_model_gradient_boosting_5yr_test.joblib
 
-print(f" Model trained! F1 Score: {metrics['Test F1 Score']:.4f}")
-EOF
+# Make predictions for 2025
+predictions = predictor.predict_2025_race('Australian Grand Prix')
 ```
 
-## Project Structure
+### Train New Models
 
-```
-FormulaOne_Predictor2025/
- f1_predictor.py          # Main predictor & Streamlit app
- data_loader.py           # Data loading & feature engineering
- f1_model.joblib          # Trained ML model
- requirements.txt         # Python dependencies
- README.md               # This file
- IMPROVEMENTS.md         # Detailed improvement docs
- MODEL_SUMMARY.md        # Model performance summary
- test_improvements.py    # Verification script
- f1data/                 # Historical F1 data (CSV files)
-     races.csv
-     results.csv
-     drivers.csv
-     constructors.csv
-     qualifying.csv
-     circuits.csv
-     ... (other CSVs)
+```bash
+python3 train_models.py
 ```
 
-## Features
+This trains all 3 models on:
+- Training: 1950-2019 (70 years)
+- Validation: 2020
+- Test: 2021-2024 (4 years, ~68 winners)
 
-### Prediction Capabilities
--  Predict race winners for upcoming 2025 F1 races
--  Win probability for each driver
--  Championship simulation
--  Feature importance analysis
--  Interactive web dashboard
 
-### Model Performance
-- **F1 Score**: 0.80 (80% accuracy on minority class)
-- **Recall**: 75% (finds 3 out of 4 winners)
-- **Precision**: 86% (reliable predictions)
-- **ROC AUC**: 0.99 (excellent discrimination)
 
-## How It Works
+## Files
 
-The model uses **Gradient Boosting** with:
-- SMOTE oversampling for class balance
-- Optimized decision threshold (0.70)
-- 17 engineered features including:
-  - Grid position
-  - Recent win/podium rates
-  - Average finishing position
-  - Championship standing
-  - Team performance metrics
-
-## Using the Web App
-
-1. **Race Predictor**: Select a 2025 race and get win probabilities
-2. **Championship Simulation**: See predicted final standings
-3. **Model Management**: Retrain or reload the model
-4. **Calendar View**: Track race schedule and results
-
-### Navigation
-- Use sidebar to switch between features
-- Click race name to make predictions
-- View feature importance charts
-
-## Command Line Usage
-
-### Make Predictions
-```python
-from f1_predictor import F1Predictor
-
-predictor = F1Predictor()
-predictor.load_model()
-
-# Predict a specific race
-results = predictor.predict_2025_race('Brazilian Grand Prix')
-print(results)
+```
+data_loader.py                             # Feature engineering & data loading
+f1_predictor.py                            # Model training & prediction
+train_models.py                            # Train all 3 models
+requirements.txt                           # Dependencies
+f1_model_gradient_boosting_5yr_test.joblib    # Trained GB model ⭐
+f1_model_random_forest_5yr_test.joblib       # Trained RF model
+f1_model_xgboost_5yr_test.joblib            # Trained XGBoost model
+f1data/                                    # Historical F1 data (CSV files)
 ```
 
-### Get Feature Importance
-```python
-print(predictor.feature_importance.head(10))
-```
+## Features Used
 
-### Simulate Championship
-```python
-standings, constructor_standings, races = predictor.simulate_championship()
-print(standings)
-```
+17 engineered features:
+- `grid` - Starting grid position
+- `qual_position_avg` - Recent qualifying performance
+- `points_moving_avg` - Recent points trend
+- `circuit_wins` - Historical wins at circuit
+- `win_rate_5` - Winning rate (last 5 races)
+- `podium_rate_5` - Podium rate (last 5 races)
+- `avg_position_5` - Average finish position (last 5)
+- `grid_to_position_gap` - Grid vs finish improvement
+- `points_championship` - Championship points
+- `position_championship` - Championship position
+- `constructor_points_mean` - Team avg points
+- `constructor_points_std` - Team consistency
+- `constructor_position_mean` - Team avg position
+- `constructor_wins` - Team total wins
+- `nationality` - Driver nationality
+- `nationality_constructor` - Team nationality
+- `country` - Race country
+
+## Training Details
+
+### Class Imbalance Handling
+- SMOTE oversampling: 5% → 50% balance
+- Threshold optimization: Dynamic decision boundary
+- Class weighting: Penalize winner misclassification
+
+### Data Split
+- **Temporal**: Train ≤2019, Val 2020, Test 2021-2024
+- **Class balance**: ~5% winners (before SMOTE)
+- **Total samples**: 26,759 historical results
+
+### Model Hyperparameters
+
+**Gradient Boosting**:
+- n_estimators: 150
+- max_depth: 4
+- learning_rate: 0.1
+- threshold: 0.15 (optimized on validation)
+
+**Random Forest**:
+- n_estimators: 200
+- max_depth: 6
+- threshold: 0.70 (optimized on validation)
+
+**XGBoost**:
+- n_estimators: 200
+- max_depth: 6
+- threshold: 0.70 (optimized on validation)
 
 ## Dependencies
 
-- `pandas` - Data manipulation
-- `numpy` - Numerical computing
-- `scikit-learn` - Machine learning
-- `streamlit` - Web interface
-- `plotly` - Interactive charts
-- `imbalanced-learn` - SMOTE oversampling
-- `xgboost` - Gradient boosting (optional)
-- `joblib` - Model serialization
+- pandas >= 1.3.0
+- numpy >= 1.21.0
+- scikit-learn >= 0.24.0
+- imbalanced-learn >= 0.10.1
+- xgboost >= 1.7.0
+- joblib >= 1.0.0
+- streamlit >= 1.0.0 (optional, for web UI)
+- plotly >= 5.0.0 (optional, for visualizations)
 
-## Configuration
+## License
 
-### Model Types Available
-```python
-# Gradient Boosting (Recommended)
-predictor = F1Predictor(model_type='gradient_boosting')
-
-# Random Forest
-predictor = F1Predictor(model_type='random_forest')
-
-# XGBoost (requires: brew install libomp)
-predictor = F1Predictor(model_type='xgboost')
-```
-
-### Training Options
-```python
-predictor.train_model(
-    use_smote=True,           # Apply SMOTE oversampling
-    optimize_threshold=True   # Optimize decision boundary
-)
-```
-
-## Data
-
-The model is trained on historical F1 data (2022 and earlier):
-- **Validation**: 2023 season
-- **Test**: 2024 season
-- **Prediction**: 2025 season
-
-Data includes:
-- Race results and qualifying
-- Driver & constructor standings
-- Circuit information
-- Lap times and pit stops
-
-## Important Notes
+MIT License
 
 - Model predictions are probability estimates, not certainties
 - Real F1 outcomes depend on many unpredictable factors
