@@ -448,7 +448,21 @@ class F1Predictor:
         if self.model is None or self.grid_2025 is None:
             return None, None, None
 
+        # Name mapping for driver name variations
+        driver_name_mapping = {
+            'Alex Albon': 'Alexander Albon',
+            'Kimi Antonelli': 'Andrea Kimi Antonelli',
+        }
+
         championship_points = {driver: 0 for driver in self.grid_2025['driver_name']}
+
+        def normalize_driver_name(name):
+            """Normalize driver name to match grid names."""
+            if name in championship_points:
+                return name
+            if name in driver_name_mapping:
+                return driver_name_mapping[name]
+            return name
 
         if self.results_2025 is not None:
             for _, race in self.results_2025.iterrows():
@@ -460,6 +474,9 @@ class F1Predictor:
                         driver_name = race[c]
                         break
                 if driver_name is None: continue
+                driver_name = normalize_driver_name(driver_name)
+                if driver_name not in championship_points:
+                    continue
                 if pd.notna(pos) and int(pos) in points_table:
                     championship_points[driver_name] += points_table[int(pos)]
                 if 'fastest_lap' in race and pd.notna(race['fastest_lap']):
@@ -527,7 +544,9 @@ class F1Predictor:
                     fastest_lap_prob = 0.3 if pos < 5 else 0.1
                     if np.random.random() < fastest_lap_prob:
                         points += 1
-                championship_points[driver['Driver']] += points
+                driver_name = normalize_driver_name(driver['Driver'])
+                if driver_name in championship_points:
+                    championship_points[driver_name] += points
 
             valid_results = [d for d in race_order if not d.get('DNF', False)]
             if len(valid_results) >= 3:
@@ -770,11 +789,10 @@ def main():
                         st.subheader("Constructor Standings")
                         st.dataframe(final_constructors, hide_index=True, use_container_width=True)
                     
-                    fig = px.bar(final_drivers.head(10), x='Driver', y='Points', color='Team', title="Projected Final Points")
+                    fig = px.bar(final_drivers.head(10), x='Driver', y='Points', color='team_name', title="Projected Final Points")
                     st.plotly_chart(fig, use_container_width=True)
                     
-                    with st.expander("View Race-by-Race Simulation Logs"):
-                        st.write(race_logs)
+                    
                 else:
                     st.error("Simulation failed.")
 
